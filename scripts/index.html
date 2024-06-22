@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat with AI</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        #chat-container { max-width: 600px; margin: 0 auto; }
+        #messages { border: 1px solid #ccc; padding: 10px; height: 400px; overflow-y: scroll; }
+        .message { margin-bottom: 10px; }
+        .customer { font-weight: bold; }
+        .assistant { color: green; }
+        #input-container { margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div id="chat-container">
+        <div id="messages"></div>
+        <div id="input-container">
+            <input type="text" id="user-input" placeholder="Type your message here" />
+            <button onclick="sendMessage()">Send</button>
+            <select id="model-select">
+                <option value="fine_tuned">Fine-tuned Model</option>
+                <option value="pretrained">Pre-trained Model</option>
+            </select>
+            <button onclick="resetChat()">Reset</button>
+        </div>
+    </div>
+
+    <script>
+        let queryCount = 0;
+
+        async function sendMessage() {
+            const userInput = document.getElementById('user-input').value;
+            const modelType = document.getElementById('model-select').value;
+            if (userInput.trim() === '') return;
+
+            queryCount++;
+            addMessage('customer', userInput, modelType);
+
+            const response = await fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ message: userInput, model: modelType }),
+            });
+
+            const data = await response.json();
+            addMessage('assistant', data.response, modelType);
+            document.getElementById('user-input').value = '';
+
+            if (queryCount >= 3) {
+                alert("You have reached the maximum of 3 queries. Please reset the chat.");
+            }
+        }
+
+        function addMessage(role, text, modelType) {
+            const messageContainer = document.createElement('div');
+            messageContainer.className = 'message ' + role + ' ' + modelType;
+            messageContainer.textContent = (role === 'customer' ? 'Customer: ' : 'Assistant: ') + text + (modelType === 'fine_tuned' ? ' (Fine-tuned)' : ' (Pre-trained)');
+            document.getElementById('messages').appendChild(messageContainer);
+            document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+        }
+
+        async function resetChat() {
+            await fetch('/reset', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            document.getElementById('messages').innerHTML = '';
+            queryCount = 0;
+        }
+    </script>
+</body>
+</html>

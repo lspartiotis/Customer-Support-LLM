@@ -25,43 +25,54 @@ generator_fine_tuned = load_model(saved_model_path, saved_tokenizer_path)
 generator_pretrained = pipeline("text-generation", model='gpt2')
 
 # Initialize the conversation histories
-fine_tuned_history = ""
-pretrained_history = ""
+fine_tuned_history = ["You are a customer support agent. Please respond to customer queries accordingly."]
+pretrained_history = ["You are a customer support agent. Please respond to customer queries accordingly."]
+max_conversation_length = 6
 
 # Define a function to generate a response using the fine-tuned model
 def generate_response_fine_tuned(prompt):
     global fine_tuned_history
     
     # Append the new prompt to the conversation history
-    fine_tuned_history += f"\nCustomer: {prompt}\nAssistant:"
+    fine_tuned_history.append(f"Customer: {prompt}\nAssistant:")
     
     # Generate a response
-    response = generator_fine_tuned(fine_tuned_history, max_length=100)[0]['generated_text']
+    conversation = "\n".join(fine_tuned_history)
+    response = generator_fine_tuned(conversation, max_new_tokens=50)[0]['generated_text']
     
     # Extract only the new response and update the conversation history
-    new_response = response[len(fine_tuned_history):]
-    fine_tuned_history += new_response
+    new_response = response[len(conversation):].strip()
+    fine_tuned_history[-1] += " " + new_response
     
-    return new_response.strip()
+    # Truncate conversation history if it exceeds max length
+    if len(fine_tuned_history) > max_conversation_length:
+        fine_tuned_history = fine_tuned_history[-max_conversation_length:]
+    
+    return new_response
 
 # Define a function to generate a response using the pre-trained model
 def generate_response_pretrained(prompt):
     global pretrained_history
     
     # Append the new prompt to the conversation history
-    pretrained_history += f"\nCustomer: {prompt}\nAssistant:"
+    pretrained_history.append(f"Customer: {prompt}\nAssistant:")
     
     # Generate a response with the pre-trained model
-    response = generator_pretrained(pretrained_history, max_length=100)[0]['generated_text']
+    conversation = "\n".join(pretrained_history)
+    response = generator_pretrained(conversation, max_new_tokens=50)[0]['generated_text']
     
     # Extract only the new response and update the conversation history
-    new_response = response[len(pretrained_history):]
-    pretrained_history += new_response
+    new_response = response[len(conversation):].strip()
+    pretrained_history[-1] += " " + new_response
     
-    return new_response.strip()
+    # Truncate conversation history if it exceeds max length
+    if len(pretrained_history) > max_conversation_length:
+        pretrained_history = pretrained_history[-max_conversation_length:]
+    
+    return new_response
 
-# Main loop for continuous conversation
-while True:
+# Main loop for up to 3 queries
+for _ in range(3):
     user_input = input("Customer: ")
     
     response_fine_tuned = generate_response_fine_tuned(user_input)
